@@ -41,12 +41,15 @@ for epoch in range(max_epoch):
         type_nodes, attr_nodes, edge_index = batch.type_nodes.float(), batch.attr_nodes.float(), batch.edge_index
         n_type_nodes, n_attr_nodes, global_features, batch_info = batch.n_type_nodes, batch.n_attr_nodes, batch.global_features, batch.batch
 
+        y_truth_emb = model.emb_y(batch.y.float())
         y_truth = T.argmax(batch.y.float(), dim=1)
-        y_pred_probs = model(type_nodes, attr_nodes, edge_index, n_type_nodes, n_attr_nodes, global_features.float(),
-                             batch_info)
+        y_pred_probs, y_pred_emb = model(type_nodes, attr_nodes, edge_index, n_type_nodes, n_attr_nodes,
+                                         global_features.float(),
+                                         batch_info)
         y_pred = T.argmax(y_pred_probs, dim=1)
 
-        loss = criterion(y_pred_probs, y_truth)
+        loss = criterion(y_pred_probs, y_truth)# - F.cosine_similarity(y_truth_emb, y_pred_emb).sum()
+
         acc = T.sum(y_pred == y_truth) / BATCH_SIZE
         train_losses.append(loss.data)
         train_acc.append(acc.data)
@@ -60,12 +63,14 @@ for epoch in range(max_epoch):
         # print(f"Validating {batch_idx}/{len(train_loader)}")
         type_nodes, attr_nodes, edge_index = batch.type_nodes.float(), batch.attr_nodes.float(), batch.edge_index
         n_type_nodes, n_attr_nodes, global_features, batch_info = batch.n_type_nodes, batch.n_attr_nodes, batch.global_features, batch.batch
+        y_truth_emb = model.emb_y(batch.y.float())
         y_truth = T.argmax(batch.y.float(), dim=1)
-        y_pred_probs = model(type_nodes, attr_nodes, edge_index, n_type_nodes, n_attr_nodes, global_features.float(),
-                             batch_info)
+        y_pred_probs, y_pred_emb = model(type_nodes, attr_nodes, edge_index, n_type_nodes, n_attr_nodes,
+                                         global_features.float(),
+                                         batch_info)
         y_pred = T.argmax(y_pred_probs, dim=1)
 
-        loss = criterion(y_pred_probs, y_truth)
+        loss = criterion(y_pred_probs, y_truth)# - F.cosine_similarity(y_truth_emb, y_pred_emb).sum()
         acc = T.sum(y_pred == y_truth) / BATCH_SIZE
         val_losses.append(loss.data)
         val_acc.append(acc.data)

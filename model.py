@@ -1,6 +1,6 @@
 import torch as T
 from torch import nn
-from torch_geometric.nn import GATConv
+from torch_geometric.nn import GATv2Conv
 import torch.nn.functional as F
 from torch_scatter import scatter_mean
 
@@ -21,9 +21,11 @@ class PMGCN(nn.Module):
         self.attr_emb = nn.Linear(attr_in_channels, emb_dim)
         self.global_emb = nn.Linear(global_channels, emb_dim)
 
-        self.conv1 = GATConv(in_channels=emb_dim, out_channels=hidden_dim)
-        self.conv2 = GATConv(in_channels=hidden_dim, out_channels=hidden_dim * 2)
-        self.linear = nn.Linear(in_features=hidden_dim * 2 + emb_dim, out_features=type_in_channels)
+        self.conv1 = GATv2Conv(in_channels=emb_dim, out_channels=hidden_dim)
+        self.conv2 = GATv2Conv(in_channels=hidden_dim, out_channels=hidden_dim)
+        self.conv3 = GATv2Conv(in_channels=hidden_dim, out_channels=hidden_dim)
+        self.linear = nn.Linear(in_features=hidden_dim + emb_dim, out_features=emb_dim)
+        self.sm = nn.Linear(emb_dim, type_in_channels)
 
     def forward(self, type_nodes, attr_nodes, edge_index, n_type_nodes, n_attr_nodes, global_features, batch_info):
         x1 = self.type_emb(type_nodes)
@@ -47,12 +49,13 @@ class PMGCN(nn.Module):
         x = F.leaky_relu(x)
         x = self.conv2(x, edge_index)
         x = F.leaky_relu(x)
-
+        x = self.conv3(x, edge_index)
+        x = F.leaky_relu(x)
         x = scatter_mean(x, batch_info, dim=0)
 
-        x = self.linear(T.cat([x, global_emb], dim=1))
-        x = F.softmax(x, dim=1)
-        return x
+        out_emb = self.linear(T.cat([x, global_emb], dim=1))
+        out_prob = F.softmax(self.sm(out_emb), dim=1)
+        return out_prob, out_emb
 
     def emb_y(self, y_onehot):
         return self.type_emb(y_onehot)

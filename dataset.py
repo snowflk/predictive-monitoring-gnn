@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import os
 import json
+import random
 
 
 # BPIC12_URL = 'https://www.win.tue.nl/bpi/lib/exe/fetch.php?media=2012:financial_log.xes.gz'
@@ -118,6 +119,7 @@ class BPIC12Dataset(InMemoryDataset):
         df['AmountReq'] /= df['AmountReq'].max()  # simple normalization
         df['DayOfWeek'] = df['CompleteTime'].dt.dayofweek
 
+        random.shuffle(case_indices)
         if self.train_mode:
             n_cases = int(self.train_split * len(case_indices))
             case_indices = case_indices[:n_cases]
