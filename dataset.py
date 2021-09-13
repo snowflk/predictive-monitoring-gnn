@@ -24,7 +24,7 @@ def events_to_graph(df, num_classes):
     """
     days_of_week = T.tensor(df['DayOfWeek'].to_numpy()).long()
 
-    event_onehots = F.one_hot(T.tensor([i for i in range(num_classes+2)]).long(), num_classes=num_classes + 2)
+    event_onehots = F.one_hot(T.tensor([i for i in range(num_classes + 2)]).long(), num_classes=num_classes + 2)
     dow_onehots = F.one_hot(days_of_week, num_classes=7)
 
     event_to_id = {}
@@ -141,33 +141,33 @@ class BPIC12Dataset(InMemoryDataset):
 
         for idx, case_id in enumerate(case_indices):
             print(f"Processing {idx+1}/{len(case_indices)}")
-            df_trace = df[df['CaseID'] == case_id]
-            if len(df_trace) == 1:
+            df_trace_full = df[df['CaseID'] == case_id]
+            if len(df_trace_full) < 3:
                 continue
-            x_events = df_trace.iloc[:-1]
-            y_class = df_trace.iloc[-1]['ActivityNum']
-            y_onehot = F.one_hot(T.tensor([y_class]).long(), num_classes=num_classes)
-            type_nodes, attr_nodes, edge_index = events_to_graph(x_events, num_classes)
-            # print(f"""
-            # Type: {type_nodes.shape},
-            # Attr: {attr_nodes.shape},
-            # Edge: {edge_index.shape},
-            # Y_Onehot: {y_onehot}
-            # """)
-            global_features = T.tensor([
-                df_trace.iloc[0]['AmountReq'],
-                np.busday_count(df_trace.iloc[0]['StartTime'].date(), df_trace.iloc[-1]['CompleteTime'].date())
-            ])
-            entry = MixedData(edge_index=edge_index,
-                              type_nodes=type_nodes,
-                              attr_nodes=attr_nodes,
-                              n_type_nodes=type_nodes.shape[0],
-                              n_attr_nodes=attr_nodes.shape[0],
-                              global_features=global_features,
-                              num_nodes=type_nodes.shape[0] + attr_nodes.shape[0],
-                              y=y_onehot)
+            for j in range(3, len(df_trace_full)):
+                df_trace = df_trace_full.iloc[:j]
+                x_events = df_trace.iloc[:-1]
+                y_class = df_trace.iloc[-1]['ActivityNum']
+                y_onehot = F.one_hot(T.tensor([y_class]).long(), num_classes=num_classes)
+                y_time = np.busday_count(df_trace.iloc[-2]['CompleteTime'].date(),
+                                         df_trace.iloc[-1]['StartTime'].date())
+                type_nodes, attr_nodes, edge_index = events_to_graph(x_events, num_classes)
 
-            data_list.append(entry)
+                global_features = T.tensor([
+                    df_trace.iloc[0]['AmountReq'],
+                    np.busday_count(df_trace.iloc[0]['StartTime'].date(), df_trace.iloc[-1]['CompleteTime'].date())
+                ])
+                entry = MixedData(edge_index=edge_index,
+                                  type_nodes=type_nodes,
+                                  attr_nodes=attr_nodes,
+                                  n_type_nodes=type_nodes.shape[0],
+                                  n_attr_nodes=attr_nodes.shape[0],
+                                  global_features=global_features,
+                                  num_nodes=type_nodes.shape[0] + attr_nodes.shape[0],
+                                  y=y_onehot,
+                                  y_time=T.tensor(y_time))
+
+                data_list.append(entry)
         data, slices = self.collate(data_list)
         T.save((data, slices), self.processed_paths[0])
 

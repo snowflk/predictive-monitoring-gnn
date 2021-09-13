@@ -17,19 +17,25 @@ class PMGCN(nn.Module):
         self.global_channels = global_channels
         self.emb_dim = emb_dim
 
-        self.type_emb = nn.Linear(type_in_channels, emb_dim)
+        # self.type_emb = nn.Linear(type_in_channels, emb_dim)
+        self.type_emb = nn.Embedding(type_in_channels, emb_dim)
         self.attr_emb = nn.Linear(attr_in_channels, emb_dim)
         self.global_emb = nn.Linear(global_channels, emb_dim)
 
         conv_type = TAGConv
         self.conv1 = conv_type(in_channels=emb_dim, out_channels=hidden_dim)
         self.conv2 = conv_type(in_channels=hidden_dim, out_channels=hidden_dim)
-        self.conv3 = conv_type(in_channels=hidden_dim, out_channels=hidden_dim)
-        self.linear = nn.Linear(in_features=hidden_dim + emb_dim, out_features=emb_dim)
-        self.sm = nn.Linear(emb_dim, type_in_channels - 2)
+        self.conv3 = conv_type(in_channels=hidden_dim, out_channels=hidden_dim * 2)
+
+        self.c_linear1 = nn.Linear(in_features=hidden_dim * 2+ emb_dim, out_features=hidden_dim)
+        self.c_linear_emb = nn.Linear(in_features=hidden_dim, out_features=emb_dim)
+        self.c_linear2 = nn.Linear(emb_dim, type_in_channels - 2)
+
+        self.r_linear1 = nn.Linear(in_features=hidden_dim * 2 + emb_dim, out_features=hidden_dim)
+        self.r_linear2 = nn.Linear(in_features=hidden_dim, out_features=1)
 
     def forward(self, type_nodes, attr_nodes, edge_index, n_type_nodes, n_attr_nodes, global_features, batch_info):
-        x1 = self.type_emb(type_nodes)
+        x1 = self.type_emb(T.argmax(type_nodes, dim=1).long())
         x2 = self.attr_emb(attr_nodes)
         global_emb = self.global_emb(global_features)
         x = T.cat([x1, x2], dim=0)  # Cat along node dimension
@@ -53,13 +59,21 @@ class PMGCN(nn.Module):
         x = self.conv3(x, edge_index)
         x = F.leaky_relu(x)
         x = scatter_mean(x, batch_info, dim=0)
+        x = T.cat([x, global_emb], dim=1)
 
-        out_emb = self.linear(T.cat([x, global_emb], dim=1))
-        out_prob = F.softmax(self.sm(out_emb), dim=1)
-        return out_prob, out_emb
+        c_x = self.c_linear1(x)
+        c_x = F.leaky_relu(c_x)
+        out_emb = self.c_linear_emb(c_x)
+
+        out_prob = F.softmax(self.c_linear2(out_emb), dim=1)
+
+        r_x = self.r_linear1(x)
+        r_x = F.leaky_relu(r_x)
+        out_time = self.r_linear2(r_x)
+        return out_prob, out_emb, out_time
 
     def emb_y(self, y_onehot):
-        return self.type_emb(F.pad(y_onehot, (0, 2)))
+        return self.type_emb(F.pad(y_onehot, (0, 2)).argmax(dim=1))
 
 
 
