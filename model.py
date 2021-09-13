@@ -1,6 +1,6 @@
 import torch as T
 from torch import nn
-from torch_geometric.nn import GATv2Conv, TAGConv
+from torch_geometric.nn import GATv2Conv, TAGConv, GCNConv
 import torch.nn.functional as F
 from torch_scatter import scatter_mean
 
@@ -22,6 +22,7 @@ class PMGCN(nn.Module):
         self.attr_emb = nn.Linear(attr_in_channels, emb_dim)
         self.global_emb = nn.Linear(global_channels, emb_dim)
 
+        # conv_type = GCNConv
         conv_type = TAGConv
         self.conv1 = conv_type(in_channels=emb_dim, out_channels=hidden_dim)
         self.conv2 = conv_type(in_channels=hidden_dim, out_channels=hidden_dim)

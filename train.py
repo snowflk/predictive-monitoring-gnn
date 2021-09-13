@@ -31,7 +31,7 @@ def mean(data):
 
 
 # batch = next(iter(train_loader))
-max_epoch = 300
+max_epoch = 100
 
 
 class Metrics:
@@ -70,7 +70,8 @@ train_mae = Metrics('Train MAE')
 val_mae = Metrics('Val MAE')
 train_acc = Metrics('Train Acc')
 val_acc = Metrics('Val Acc')
-
+model_name = "dim32"
+best_loss = np.inf
 for epoch in range(max_epoch):
     print(f"Epoch {epoch+1}/{max_epoch}==============")
     model.train()
@@ -127,10 +128,22 @@ for epoch in range(max_epoch):
         val_acc.batch_end(acc.cpu().data)
         val_mae.batch_end(time_mae.cpu().data)
         print(
-            f"[{batch_idx+1}/{len(train_loader)}] {val_loss.current_s()} | {val_acc.current_s()} | {val_mae.current_s()}")
+            f"[{batch_idx+1}/{len(val_loader)}] {val_loss.current_s()} | {val_acc.current_s()} | {val_mae.current_s()}")
     print("===========================================")
     print(f"{train_loss} | {train_acc} | {train_mae}")
     print(f"{val_loss} | {val_acc} | {val_mae}")
+
+    if val_loss.current_epoch < best_loss:
+        best_loss = val_loss
+        T.save(model, f'./pretrained/saved_model_{model_name}_ckpt_{epoch+1}.pt')
+        T.save({'epoch_train_acc': train_acc.epoch,
+                'epoch_train_loss': train_loss.epoch,
+                'epoch_val_acc': val_acc.epoch,
+                'epoch_val_loss': val_loss.epoch,
+                'train_acc': train_acc.batch_history,
+                'train_loss': train_loss.batch_history,
+                'val_acc': val_acc.batch_history,
+                'val_loss': val_loss.batch_history}, f'./pretrained/history_{model_name}_ckpt_{epoch+1}.pt')
 
     train_loss.epoch_end()
     val_loss.epoch_end()
@@ -139,8 +152,7 @@ for epoch in range(max_epoch):
     train_mae.epoch_end()
     val_mae.epoch_end()
 
-name = "dim32"
-T.save(model, f'saved_model_{name}.pt')
+T.save(model, f'./pretrained/saved_model_{model_name}.pt')
 T.save({'epoch_train_acc': train_acc.epoch,
         'epoch_train_loss': train_loss.epoch,
         'epoch_val_acc': val_acc.epoch,
@@ -148,4 +160,4 @@ T.save({'epoch_train_acc': train_acc.epoch,
         'train_acc': train_acc.batch_history,
         'train_loss': train_loss.batch_history,
         'val_acc': val_acc.batch_history,
-        'val_loss': val_loss.batch_history}, f'history_{name}.pt')
+        'val_loss': val_loss.batch_history}, f'./pretrained/history_{model_name}.pt')
