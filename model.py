@@ -28,7 +28,7 @@ class PMGCN(nn.Module):
         self.conv2 = conv_type(in_channels=hidden_dim, out_channels=hidden_dim)
         self.conv3 = conv_type(in_channels=hidden_dim, out_channels=hidden_dim * 2)
 
-        self.c_linear1 = nn.Linear(in_features=hidden_dim * 2+ emb_dim, out_features=hidden_dim)
+        self.c_linear1 = nn.Linear(in_features=hidden_dim * 2 + emb_dim, out_features=hidden_dim)
         self.c_linear_emb = nn.Linear(in_features=hidden_dim, out_features=emb_dim)
         self.c_linear2 = nn.Linear(emb_dim, type_in_channels - 2)
 
@@ -36,10 +36,27 @@ class PMGCN(nn.Module):
         self.r_linear2 = nn.Linear(in_features=hidden_dim, out_features=1)
 
     def forward(self, type_nodes, attr_nodes, edge_index, n_type_nodes, n_attr_nodes, global_features, batch_info):
+        """
+        The mini-batching strategy is default.
+        In order to merge the attribute nodes and type nodes to a proper graph, a index selection trick is used
+        to swap the nodes' ordering.
+        The rest of the network is as usual.
+        :param type_nodes: The nodes for the event types
+        :param attr_nodes: The nodes for the attributes of the events
+        :param edge_index:
+        :param n_type_nodes: Number of type nodes
+        :param n_attr_nodes: Number of attribute nodes
+        :param global_features: A vector of global features
+        :param batch_info: Mini-batching information of Pytorch Geometric.
+        :return:
+        """
         x1 = self.type_emb(T.argmax(type_nodes, dim=1).long())
         x2 = self.attr_emb(attr_nodes)
         global_emb = self.global_emb(global_features)
-        x = T.cat([x1, x2], dim=0)  # Cat along node dimension
+
+        # We concatenate the attribute nodes to the end of the list
+        # Then we sort it back to the desired position
+        x = T.cat([x1, x2], dim=0)
         gather_id = []
         curr_type_idx = 0
         curr_attr_idx = x1.shape[0]
@@ -75,6 +92,3 @@ class PMGCN(nn.Module):
 
     def emb_y(self, y_onehot):
         return self.type_emb(F.pad(y_onehot, (0, 2)).argmax(dim=1))
-
-
-
