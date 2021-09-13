@@ -29,7 +29,11 @@ def mean(data):
 
 
 # batch = next(iter(train_loader))
-max_epoch = 1000
+max_epoch = 300
+epoch_train_loss = []
+epoch_val_loss = []
+epoch_train_acc = []
+epoch_val_acc = []
 for epoch in range(max_epoch):
     print(f"Epoch {epoch+1}/{max_epoch}")
     model.train()
@@ -48,7 +52,7 @@ for epoch in range(max_epoch):
                                          batch_info)
         y_pred = T.argmax(y_pred_probs, dim=1)
 
-        loss = criterion(y_pred_probs, y_truth)# - F.cosine_similarity(y_truth_emb, y_pred_emb).sum()
+        loss = criterion(y_pred_probs, y_truth)  # - F.cosine_similarity(y_truth_emb, y_pred_emb).sum()
 
         acc = T.sum(y_pred == y_truth) / BATCH_SIZE
         train_losses.append(loss.data)
@@ -70,9 +74,19 @@ for epoch in range(max_epoch):
                                          batch_info)
         y_pred = T.argmax(y_pred_probs, dim=1)
 
-        loss = criterion(y_pred_probs, y_truth)# - F.cosine_similarity(y_truth_emb, y_pred_emb).sum()
+        loss = criterion(y_pred_probs, y_truth)  # - F.cosine_similarity(y_truth_emb, y_pred_emb).sum()
         acc = T.sum(y_pred == y_truth) / BATCH_SIZE
         val_losses.append(loss.data)
         val_acc.append(acc.data)
     print(f"Train Loss: {mean(train_losses)} | Train Acc: {mean(train_acc)}")
     print(f"Val Loss: {mean(val_losses)} | Val Acc: {mean(val_acc)}")
+    epoch_train_acc.append(mean(train_acc))
+    epoch_train_loss.append(mean(train_losses))
+    epoch_val_acc.append(mean(val_acc))
+    epoch_val_loss.append(mean(val_losses))
+
+T.save(model, 'saved_model.pt')
+T.save({'train_acc': epoch_train_acc,
+        'train_loss': epoch_train_loss,
+        'val_acc': epoch_val_acc,
+        'val_loss': epoch_val_loss}, 'history.pt')
