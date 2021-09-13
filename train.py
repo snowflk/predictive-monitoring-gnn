@@ -6,18 +6,19 @@ from dataset import BPIC12Dataset
 import numpy as np
 from tqdm import tqdm
 
-BATCH_SIZE = 32
+BATCH_SIZE = 64
 train_dataset = BPIC12Dataset('./data', train_mode=True)
 val_dataset = BPIC12Dataset('./data', train_mode=False)
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
 device = T.device('cuda' if T.cuda.is_available() else 'cpu')
+print("Using device:", device)
 model = PMGCN(
     type_in_channels=6,
     attr_in_channels=8,
     emb_dim=32,
-    hidden_dim=32).to(device)
+    hidden_dim=64).to(device)
 
 optimizer = T.optim.Adam(model.parameters(), lr=3e-4, weight_decay=5e-4)
 
@@ -40,6 +41,7 @@ for epoch in range(max_epoch):
     train_losses = []
     train_acc = []
     for batch_idx, batch in enumerate(train_loader):
+        batch = batch.to(device)
         # print(f"Training {batch_idx}/{len(train_loader)}")
         optimizer.zero_grad()
         type_nodes, attr_nodes, edge_index = batch.type_nodes.float(), batch.attr_nodes.float(), batch.edge_index
@@ -55,8 +57,8 @@ for epoch in range(max_epoch):
         loss = criterion(y_pred_probs, y_truth)  # - F.cosine_similarity(y_truth_emb, y_pred_emb).sum()
 
         acc = T.sum(y_pred == y_truth) / BATCH_SIZE
-        train_losses.append(loss.data)
-        train_acc.append(acc.data)
+        train_losses.append(loss.cpu().data)
+        train_acc.append(acc.cpu().data)
         loss.backward()
         optimizer.step()
 
@@ -64,6 +66,8 @@ for epoch in range(max_epoch):
     val_losses = []
     val_acc = []
     for batch_idx, batch in enumerate(val_loader):
+        batch = batch.to(device)
+
         # print(f"Validating {batch_idx}/{len(train_loader)}")
         type_nodes, attr_nodes, edge_index = batch.type_nodes.float(), batch.attr_nodes.float(), batch.edge_index
         n_type_nodes, n_attr_nodes, global_features, batch_info = batch.n_type_nodes, batch.n_attr_nodes, batch.global_features, batch.batch
@@ -76,8 +80,8 @@ for epoch in range(max_epoch):
 
         loss = criterion(y_pred_probs, y_truth)  # - F.cosine_similarity(y_truth_emb, y_pred_emb).sum()
         acc = T.sum(y_pred == y_truth) / BATCH_SIZE
-        val_losses.append(loss.data)
-        val_acc.append(acc.data)
+        val_losses.append(loss.cpu().data)
+        val_acc.append(acc.cpu().data)
     print(f"Train Loss: {mean(train_losses)} | Train Acc: {mean(train_acc)}")
     print(f"Val Loss: {mean(val_losses)} | Val Acc: {mean(val_acc)}")
     epoch_train_acc.append(mean(train_acc))

@@ -44,7 +44,7 @@ class PMGCN(nn.Module):
                 gather_id.append(curr_attr_idx + j)
             curr_type_idx += n_type_nodes[i]
             curr_attr_idx += n_attr_nodes[i]
-        x = T.index_select(x, 0, T.tensor(gather_id))
+        x = T.index_select(x, 0, T.tensor(gather_id).to(x.device))
 
         x = self.conv1(x, edge_index)
         x = F.leaky_relu(x)
