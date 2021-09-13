@@ -24,7 +24,7 @@ def events_to_graph(df, num_classes):
     """
     days_of_week = T.tensor(df['DayOfWeek'].to_numpy()).long()
 
-    event_onehots = F.one_hot(T.tensor([i for i in range(num_classes)]).long(), num_classes=num_classes)
+    event_onehots = F.one_hot(T.tensor([i for i in range(num_classes+2)]).long(), num_classes=num_classes + 2)
     dow_onehots = F.one_hot(days_of_week, num_classes=7)
 
     event_to_id = {}
@@ -33,9 +33,9 @@ def events_to_graph(df, num_classes):
     type_node_features = []
     attr_node_features = []
     # First event
-    event_type = df.iloc[0]['ActivityNum']
-    event_to_id[event_type] = 0
-    type_node_features.append(event_onehots[event_type])
+    first_event_type = df.iloc[0]['ActivityNum']
+    event_to_id[first_event_type] = 0
+    type_node_features.append(event_onehots[first_event_type])
     curr_id = 1
     # Create edges of flow type
     for i in range(1, len(df)):
@@ -52,6 +52,18 @@ def events_to_graph(df, num_classes):
             edge_index.append([event_to_id[event_type], event_to_id[prev_event_type]])
             edge_exists[edge_key] = True
             edge_exists[backward_edge_key] = True
+
+    # Create start/end node
+    event_to_id[num_classes] = curr_id
+    event_to_id[num_classes + 1] = curr_id + 1
+    type_node_features.append(event_onehots[num_classes])
+    type_node_features.append(event_onehots[num_classes + 1])
+    edge_index.append([event_to_id[first_event_type], event_to_id[num_classes]])
+    edge_index.append([event_to_id[num_classes], event_to_id[first_event_type]])
+    last_event_type = df.iloc[-1]['ActivityNum']
+    edge_index.append([event_to_id[last_event_type], event_to_id[num_classes + 1]])
+    edge_index.append([event_to_id[num_classes + 1], event_to_id[last_event_type]])
+    curr_id += 2
 
     # Create edges of attr type
     for i in range(len(df)):

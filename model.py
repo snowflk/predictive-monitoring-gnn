@@ -26,7 +26,7 @@ class PMGCN(nn.Module):
         self.conv2 = conv_type(in_channels=hidden_dim, out_channels=hidden_dim)
         self.conv3 = conv_type(in_channels=hidden_dim, out_channels=hidden_dim)
         self.linear = nn.Linear(in_features=hidden_dim + emb_dim, out_features=emb_dim)
-        self.sm = nn.Linear(emb_dim, type_in_channels)
+        self.sm = nn.Linear(emb_dim, type_in_channels - 2)
 
     def forward(self, type_nodes, attr_nodes, edge_index, n_type_nodes, n_attr_nodes, global_features, batch_info):
         x1 = self.type_emb(type_nodes)
@@ -59,7 +59,7 @@ class PMGCN(nn.Module):
         return out_prob, out_emb
 
     def emb_y(self, y_onehot):
-        return self.type_emb(y_onehot)
+        return self.type_emb(F.pad(y_onehot, (0, 2)))
 
 
-model = PMGCN(1, 2, 3)
+

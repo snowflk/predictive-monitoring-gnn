@@ -15,7 +15,7 @@ val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
 device = T.device('cuda' if T.cuda.is_available() else 'cpu')
 print("Using device:", device)
 model = PMGCN(
-    type_in_channels=6,
+    type_in_channels=8,
     attr_in_channels=8,
     emb_dim=32,
     hidden_dim=64).to(device)
@@ -89,8 +89,9 @@ for epoch in range(max_epoch):
     epoch_val_acc.append(mean(val_acc))
     epoch_val_loss.append(mean(val_losses))
 
-T.save(model, 'saved_model.pt')
+name = "dim32"
+T.save(model, f'saved_model_{name}.pt')
 T.save({'train_acc': epoch_train_acc,
         'train_loss': epoch_train_loss,
         'val_acc': epoch_val_acc,
-        'val_loss': epoch_val_loss}, 'history.pt')
+        'val_loss': epoch_val_loss}, f'history_{name}.pt')
