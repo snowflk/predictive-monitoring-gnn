@@ -17,8 +17,8 @@ print("Using device:", device)
 model = PMGCN(
     type_in_channels=8,
     attr_in_channels=8,
-    emb_dim=32,
-    hidden_dim=32).to(device)
+    emb_dim=128,
+    hidden_dim=128).to(device)
 
 optimizer = T.optim.Adam(model.parameters(), lr=0.001, weight_decay=5e-4)
 
@@ -70,7 +70,7 @@ train_mae = Metrics('Train MAE')
 val_mae = Metrics('Val MAE')
 train_acc = Metrics('Train Acc')
 val_acc = Metrics('Val Acc')
-model_name = "dim32"
+model_name = "dim1282"
 best_loss = np.inf
 for epoch in range(max_epoch):
     print(f"Epoch {epoch+1}/{max_epoch}==============")
@@ -133,8 +133,8 @@ for epoch in range(max_epoch):
     print(f"{train_loss} | {train_acc} | {train_mae}")
     print(f"{val_loss} | {val_acc} | {val_mae}")
 
-    if val_loss.current_epoch < best_loss:
-        best_loss = val_loss
+    if val_loss.current_epoch < best_loss and epoch > 80:
+        best_loss = val_loss.current_epoch
         T.save(model, f'./pretrained/saved_model_{model_name}_ckpt_{epoch+1}.pt')
         T.save({'epoch_train_acc': train_acc.epoch,
                 'epoch_train_loss': train_loss.epoch,
